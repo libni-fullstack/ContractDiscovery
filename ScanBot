@@ -1,0 +1,84 @@
+import Web3 from 'web3';
+
+// Infura configuration
+const infuraProjectId = 'ProjectId';
+const infuraWebSocketUrl = `wss://mainnet.infura.io/ws/v3/ProjectId`;
+
+async function handleNewContractDiscovery(newContractAddress) {
+  try {
+    // Create a Web3 instance using Infura as the provider
+    const web3 = new Web3(infuraWebSocketUrl);
+
+    // Fetch contract ABI dynamically
+    const contractCode = await web3.eth.getCode(newContractAddress);
+
+    // Check if the contract exists
+    if (contractCode === '0x') {
+      console.log(`Contract does not exist at address: ${newContractAddress}`);
+      return;
+    }
+
+    console.log('New contract address:', newContractAddress);
+    // Log or handle the newly discovered contract as desired
+
+    // Continue monitoring subsequent block headers for contract creations
+    web3.eth.subscribe('newBlockHeaders', async (error, blockHeader) => {
+      if (error) {
+        console.error('Error listening for new block headers:', error);
+        return;
+      }
+
+      const blockNumber = blockHeader.number;
+      console.log(`New block header received: ${blockNumber}`);
+
+      // Retrieve block details
+      const block = await web3.eth.getBlock(blockNumber, true);
+      const transactions = block.transactions;
+
+      // Iterate over transactions
+      transactions.forEach(async (tx) => {
+        // Check if the transaction is a contract creation
+        if (!tx.to) {
+          const contractAddress = tx.contractAddress;
+          console.log('New contract address:', contractAddress);
+          handleNewContractDiscovery(contractAddress);
+        }
+      });
+    });
+  } catch (error) {
+    console.error('Error handling new contract discovery:', error);
+  }
+}
+
+// Start listening for new contract creations
+try {
+  // Create a Web3 instance using Infura as the provider
+  const web3 = new Web3(infuraWebSocketUrl);
+
+  // Subscribe to contract events
+  web3.eth.subscribe('newBlockHeaders', async (error, blockHeader) => {
+    if (error) {
+      console.error('Error listening for new block headers:', error);
+      return;
+    }
+
+    const blockNumber = blockHeader.number;
+    console.log(`New block header received: ${blockNumber}`);
+
+    // Retrieve block details
+    const block = await web3.eth.getBlock(blockNumber, true);
+    const transactions = block.transactions;
+
+    // Iterate over transactions
+    transactions.forEach(async (tx) => {
+      // Check if the transaction is a contract creation
+      if (!tx.to) {
+        const contractAddress = tx.contractAddress;
+        console.log('New contract address:', contractAddress);
+        handleNewContractDiscovery(contractAddress);
+      }
+    });
+  });
+} catch (error) {
+  console.error('Error listening for new contracts:', error);
+}
